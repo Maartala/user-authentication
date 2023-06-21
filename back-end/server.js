@@ -2,7 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 
 import { User } from "./model/index.js";
-import { authenticateToken, generateAccessToken } from "./lib.jwt.js";
+import { authenticateToken, generateAccessToken } from "./lib/jwt.js";
 import cookieParser from "cookie-parser";
 
 
