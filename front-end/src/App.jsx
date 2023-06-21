@@ -1,20 +1,19 @@
-import { useEffect, useState } from "react";
 import "./App.css";
+import { Route, Routes } from "react-router-dom";
+import User from "./pages/User";
+import SignUp from "./components/SignUp";
+import Login from "./components/Login";
+import Nav from "./components/Nav";
 
 function App() {
-  const [status, setStatus] = useState();
-
-  useEffect(() => {
-    fetch("/api/status")
-      .then((res) => res.json())
-      .then((data) => setStatus(data.status))
-      .catch((error) => {
-        console.error(error);
-        setStatus("error");
-      });
-  }, []);
-
-  return <>API Status: {status}</>;
+  return (
+    <Routes>
+      <Route path="/" element={<Nav />} />
+      <Route path="/userprofil" element={<User />} />
+      <Route path="/signup" element={<SignUp />} />
+      <Route path="/login" element={<Login />} />
+    </Routes>
+  );
 }
 
 export default App;

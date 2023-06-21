@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import crypto from "crypto";
 
 
-
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, lowercase: true },
@@ -29,5 +28,6 @@ userSchema.methods.verifyPassword = function (password) {
 
   return this.hash === hash;
 };
+
 
 export const User = mongoose.model("User", userSchema);

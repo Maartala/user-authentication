@@ -1,6 +1,9 @@
 import express from "express";
 import dotenv from "dotenv";
-import {User} from "./model/index.js";
+
+import { User } from "./model/index.js";
+import { authenticateToken, generateAccessToken } from "./lib.jwt.js";
+import cookieParser from "cookie-parser";
 
 
 dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
@@ -8,12 +11,12 @@ dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
 const PORT = process.env.BE_PORT || 3000;
 const app = express();
 
-app.use(express.json()); // Parse request body as JSON
 
 const ReactAppDistPath = new URL("../front-end/dist/", import.meta.url);
 const ReactAppIndex = new URL("../front-end/dist/index.html", import.meta.url);
 
-
+app.use(express.json()); // Parse request body as JSON
+app.use(cookieParser());
 app.use(express.static(ReactAppDistPath.pathname));
 /*
  * express.static match auf jede Datei im angegebenen Ordner
@@ -27,91 +30,67 @@ app.get("/api/status", (req, res) => {
 });
 
 
-app.post("/api/signup", async (req,res)=>{
-  // res.send({status: "Signup funktioniert"})
-  const{name, email, password}=req.body;
-
-  try{
-    
-    const existingUser=await User.findOne({email});
-    if (existingUser){
-      return res.status(409).json({error: "Benutzer mit dieser E-Mail existiert bereits "});
-    }
-    
-    const newUser =new User({
-      name,
-      email,
-    });
-    newUser.setPassword(password);
+app.post("/api/signup", async (req, res) => {
+  // Neuen User erstellen
+  const { name, email } = req.body;
+  const newUser = new User({ name, email });
+  // user.setPassword (hash und salt setzen)
+  newUser.setPassword(req.body.password);
+  // user speichern
+  try {
     await newUser.save();
-    res.status(201).json({message: "Registrierung erfolgreich."});
+    return res.send({
+      data: {
+        message: "New user created",
+        user: { name, email },
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    if (e.name === "ValidationError") {
+      return res.status(400).send({ error: e });
+    }
 
-  }catch(error){
-    console.log(error);
-    res.status(500).json({error: "Interner Serverfehler"})
+    // Duplication Error email existiert bereits als user
+    if (e.name === "MongoServerError" && e.code === 11000) {
+      console.log("Redirect");
+      return res.redirect("/login");
+    }
+
+    return res.status(500).send({ error: { message: "Unknown Server error" } });
   }
 });
-
-app.post("/api/login", async (req,res)=>{
-const {email, password}=req.body;
-
-try{
-  const existingUser = await User.findOne({email});
-  if(!existingUser){
-    return res.status(401).json({message: "Ungültige E-Mail oder Passwort"})
+app.post("/api/login", async (req, res) => {
+  const { email } = req.body;
+  // finde user mit email
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res
+      .status(401)
+      .send({ error: { message: "Email and password combination wrong!" } });
   }
 
-  const isPasswordValid=existingUser.verifyPassword(password);
-  if(!isPasswordValid){
-    return res.status(401).json({message: "Ungültige E-Mail oder Passwort"})
+  // vergleiche passwort mit user.verifyPassword
+  const isVerified = user.verifyPassword(req.body.password);
+  if (isVerified) {
+    const token = generateAccessToken({ email });
+    res.cookie("auth", token, { httpOnly: true, maxAge: 1000 * 60 * 30 });
+    return res.send({ data: { token } });
   }
 
-  res.status(200).json({message: "Login erfolgreich"});
-}catch (error){
-  console.log("Fehler beim Einloggen: ", error);
-  res.status(500).json({message:"Internal error"})
-}
-})
+  res
+    .status(401)
+    .send({ error: { message: "Email and password combination wrong!" } });
+});
 
+app.get("/api/verified", authenticateToken, (req, res) => {
+  res.send(req.userEmail);
+});
 
 app.get("/*", (req, res) => {
   res.sendFile(ReactAppIndex.pathname);
 });
 
-
 app.listen(PORT, () => {
   console.log("Server running on Port: ", PORT);
 });
-
-
-
-
-
-// app.get("/api/signup", (req, res) => {
-//   res.send({ status: "Ok" });
-// });
-
-
-// app.post("/api/signup", async (req, res) => {
-//   const { name, email, password } = req.body;
-
-//   try {
-//     // Überprüft, ob User existiert
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser) {
-//       return res.status(409).json({ message: "User already exists" });
-//     }
-
-//     // Erstelle einen neuen Benutzer
-//     const newUser = new User({ name, email });
-//     newUser.setPassword(password);
-
-//     // Speichert User in DB
-//     await newUser.save();
-
-//     res.status(201).json({ message: "User created successfully" });
-//   } catch (error) {
-//     console.error("Error creating user:", error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// });
