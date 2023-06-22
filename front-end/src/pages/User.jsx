@@ -6,8 +6,7 @@ const User = () => {
   const [user, setUser] = useState([]);
 
   useEffect(() => {
-    axios
-      .get("/api/verified", { withCredentials: true })
+    axios.get("/api/verified", { withCredentials: true })
       .then((res) => {
         console.log(res);
         setUser(res.data);
