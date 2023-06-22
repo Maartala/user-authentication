@@ -29,7 +29,6 @@ app.get("/api/status", (req, res) => {
   res.send({ status: "Ok" });
 });
 
-
 app.post("/api/signup", async (req, res) => {
   // Neuen User erstellen
   const { name, email } = req.body;
@@ -60,6 +59,7 @@ app.post("/api/signup", async (req, res) => {
     return res.status(500).send({ error: { message: "Unknown Server error" } });
   }
 });
+
 app.post("/api/login", async (req, res) => {
   const { email } = req.body;
   // finde user mit email
@@ -83,8 +83,14 @@ app.post("/api/login", async (req, res) => {
     .send({ error: { message: "Email and password combination wrong!" } });
 });
 
-app.get("/api/verified", authenticateToken, (req, res) => {
-  res.send(req.userEmail);
+app.get("/api/logout", (req, res) => {
+  res.clearCookie("auth");
+  res.send("Ok");
+});
+
+app.get("/api/verified", authenticateToken, async (req, res) => {
+  const user = await User.findOne({ email: req.userEmail });
+  res.send(user);
 });
 
 app.get("/*", (req, res) => {
